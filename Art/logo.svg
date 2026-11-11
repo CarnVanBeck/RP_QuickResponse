@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Bronze, lit from the top left -->
+    <linearGradient id="bronze" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3d39a"/>
+      <stop offset="0.35" stop-color="#c8904a"/>
+      <stop offset="0.7" stop-color="#8a5a26"/>
+      <stop offset="1" stop-color="#5a3816"/>
+    </linearGradient>
+    <linearGradient id="bronzeDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b98242"/>
+      <stop offset="1" stop-color="#4a2c10"/>
+    </linearGradient>
+    <radialGradient id="night" cx="0.5" cy="0.45" r="0.7">
+      <stop offset="0" stop-color="#3a2c22"/>
+      <stop offset="0.6" stop-color="#21180f"/>
+      <stop offset="1" stop-color="#0e0a06"/>
+    </radialGradient>
+    <radialGradient id="well" cx="0.45" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#2c211a"/>
+      <stop offset="1" stop-color="#0f0b08"/>
+    </radialGradient>
+    <linearGradient id="parchment" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6e8c8"/>
+      <stop offset="1" stop-color="#d9bf8c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#ffd98a" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Grain so nothing reads as a flat colour -->
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="noise"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.16 0" in="noise" result="dots"/>
+      <feComposite in="dots" in2="SourceGraphic" operator="in"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000" flood-opacity="0.65"/>
+    </filter>
+    <clipPath id="tile"><rect width="256" height="256" rx="36"/></clipPath>
+
+    <!-- One medallion of the ring -->
+    <g id="medal">
+      <circle r="21" fill="url(#bronze)"/>
+      <circle r="18" fill="url(#bronzeDark)"/>
+      <circle r="16" fill="url(#well)"/>
+    </g>
+  </defs>
+
+  <!-- Background tile with grain -->
+  <g clip-path="url(#tile)">
+    <rect width="256" height="256" fill="url(#night)"/>
+    <rect width="256" height="256" fill="#fff" filter="url(#grain)"/>
+    <!-- faint rune circle -->
+    <circle cx="128" cy="128" r="118" fill="none" stroke="#c8904a" stroke-opacity="0.12" stroke-width="1.5" stroke-dasharray="2 7"/>
+  </g>
+
+  <!-- The ring -->
+  <g filter="url(#shadow)">
+    <circle cx="128" cy="128" r="80" fill="none" stroke="url(#bronze)" stroke-width="9"/>
+    <circle cx="128" cy="128" r="80" fill="none" stroke="#2a190a" stroke-width="1.2" stroke-opacity="0.8"/>
+  </g>
+
+  <!-- Glow behind the chosen medallion (top right) -->
+  <circle cx="197.3" cy="88" r="36" fill="url(#glow)"/>
+
+  <!-- Six medallions, clockwise from the top -->
+  <g filter="url(#shadow)">
+    <!-- top: exclamation -->
+    <g transform="translate(128 48)">
+      <use href="#medal"/>
+      <rect x="-2.6" y="-10" width="5.2" height="13" rx="2.4" fill="#e9c78c"/>
+      <circle cx="0" cy="8" r="2.9" fill="#e9c78c"/>
+    </g>
+    <!-- top right: heart (chosen) -->
+    <g transform="translate(197.3 88) scale(1.12)">
+      <use href="#medal"/>
+      <circle r="21" fill="none" stroke="#ffe7b0" stroke-width="1.6"/>
+      <path d="M0 9 C-11 1 -10 -8 -4.6 -8.6 C-2.2 -8.9 -0.6 -7.4 0 -5.6 C0.6 -7.4 2.2 -8.9 4.6 -8.6 C10 -8 11 1 0 9 Z" fill="#ffd27a"/>
+    </g>
+    <!-- bottom right: three dots -->
+    <g transform="translate(197.3 168)">
+      <use href="#medal"/>
+      <circle cx="-7" cy="1" r="2.6" fill="#e9c78c"/>
+      <circle cx="0" cy="1" r="2.6" fill="#e9c78c"/>
+      <circle cx="7" cy="1" r="2.6" fill="#e9c78c"/>
+    </g>
+    <!-- bottom: star -->
+    <g transform="translate(128 208)">
+      <use href="#medal"/>
+      <path d="M0 -10 L2.9 -3.2 L10 -3.1 L4.5 1.6 L6.4 8.8 L0 4.8 L-6.4 8.8 L-4.5 1.6 L-10 -3.1 L-2.9 -3.2 Z" fill="#e9c78c"/>
+    </g>
+    <!-- bottom left: lightning bolt (surprise, cursing) -->
+    <g transform="translate(58.7 168)">
+      <use href="#medal"/>
+      <path d="M2.5 -11 L-6 1.5 L-0.5 1.5 L-2.5 11 L6 -1.5 L0.5 -1.5 Z" fill="#e9c78c"/>
+    </g>
+    <!-- top left: wave (a greeting) -->
+    <g transform="translate(58.7 88)">
+      <use href="#medal"/>
+      <path d="M-10 2 Q-5 -6 0 2 T10 2" fill="none" stroke="#e9c78c" stroke-width="3" stroke-linecap="round"/>
+      <path d="M-7 -5 Q-3.5 -10 0 -5" fill="none" stroke="#e9c78c" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.7"/>
+    </g>
+  </g>
+
+  <!-- Centre: speech bubble on a bronze disc -->
+  <g filter="url(#shadow)">
+    <circle cx="128" cy="128" r="46" fill="url(#bronze)"/>
+    <circle cx="128" cy="128" r="42" fill="url(#well)"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M103 107 Q103 98 112 98 L146 98 Q155 98 155 107 L155 133 Q155 142 146 142 L124 142 L111 154 L113 142 L112 142 Q103 142 103 133 Z" fill="url(#parchment)"/>
+  </g>
+  <!-- written lines -->
+  <g stroke="#7a5a32" stroke-width="2.4" stroke-linecap="round" fill="none" stroke-opacity="0.85">
+    <path d="M111 110 Q119 107.5 128 110 T145 110"/>
+    <path d="M111 119 Q118 116.5 126 119 T140 119"/>
+    <path d="M111 128 Q116 126 122 128"/>
+  </g>
+  <!-- quill -->
+  <g transform="translate(150 132) rotate(-35)">
+    <path d="M0 0 C-4 -14 -2 -34 6 -46 C9 -34 9 -16 0 0 Z" fill="#fbf3e2" stroke="#9c7848" stroke-width="1.2"/>
+    <path d="M0 0 C2 -14 4 -30 6 -46" fill="none" stroke="#9c7848" stroke-width="1"/>
+    <path d="M0 0 L-1.4 6 L1.2 6 Z" fill="#3a2a1a"/>
+  </g>
+</svg>

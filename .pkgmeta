@@ -5,6 +5,7 @@ manual-changelog:
   markup-type: markdown
 
 ignore:
+  - Art
   - Dev
   - tests
   - .gitignore
