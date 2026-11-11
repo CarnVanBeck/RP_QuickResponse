@@ -1,0 +1,8 @@
+# Editors and systems
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Downloaded listfiles used to build IconData.lua
+*.csv

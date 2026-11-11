@@ -1,0 +1,25 @@
+## Interface: 16001
+## Title: RP - Quick Response
+## Notes: A round button that opens your role-play lines in a ring around it.
+## Notes-deDE: Ein runder Knopf, der deine Rollenspiel-Sätze im Kreis um sich öffnet.
+## Author: CarnVanBeck
+## Version: 1.0.0
+## SavedVariables: RPQuickResponseDB
+## IconTexture: Interface\Icons\Spell_Holy_Renew
+## AddonCompartmentFunc: RPQuickResponse_OnAddonCompartmentClick
+## X-Category: Roleplay
+## X-License: MIT
+
+# Translations: the lookup first, then English (the base every key falls back to), then the other languages.
+Locales/Locale.lua
+Locales/enUS.lua
+Locales/deDE.lua
+
+Core.lua
+Defaults.lua
+Widgets.lua
+Radial.lua
+IconData.lua
+IconBrowser.lua
+Config.lua
+Minimap.lua

@@ -1,0 +1,10 @@
+package-as: RP_QuickResponse
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - Dev
+  - tests
+  - .gitignore
