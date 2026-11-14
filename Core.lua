@@ -3,12 +3,44 @@ local addonName, ns = ...
 local L = ns.L
 
 ns.MAX_CATEGORIES = 12
-ns.DB_VERSION = 1
 
+-- Two saved tables:
+--   RPQuickResponseDB      (account) the minimap button; the 1.0.0 button and categories as
+--                          the starting point for characters that have not logged in since;
+--   RPQuickResponseCharDB  (character) that character's categories and lines, its button's
+--                          position and lock.
 -- Migrations: STEPS[n] turns a version n-1 table into version n.
 -- Players' saved data must survive every update: never drop or reinterpret a field
--- without bumping DB_VERSION and adding a step here.
-local STEPS = {}
+-- without bumping the version and adding a step here.
+ns.DB_VERSION = 2
+ns.CHAR_DB_VERSION = 2
+
+local STEPS = {
+    -- 1.0.0 kept the categories account-wide. They become the starting set every character
+    -- copies on its first login since (see InitCharDB), so nobody loses their lines.
+    [2] = function(db)
+        if type(db.categories) == "table" then
+            db.legacyCategories = db.categories
+        end
+        db.categories = nil
+    end,
+}
+local function CopyButton(button)
+    local copy = {}
+    for _, key in ipairs({ "point", "relativePoint", "x", "y", "locked" }) do
+        copy[key] = type(button) == "table" and button[key] or nil
+    end
+    return copy
+end
+
+local CHAR_STEPS = {
+    -- The button became per character: start where the account-wide button was.
+    [2] = function(char)
+        if type(char.button) ~= "table" then
+            char.button = CopyButton(RPQuickResponseDB and RPQuickResponseDB.button)
+        end
+    end,
+}
 
 -- A chat message holds 255 bytes, and so does a macro line; "/s " takes three of them.
 local MAX_MESSAGE_LENGTH = 250
@@ -128,7 +160,7 @@ local lastPick = setmetatable({}, { __mode = "k" })
 
 -- Returns the entry, or nil and the message to show.
 function ns.PickRandom(categoryIndex)
-    local category = ns.db.categories[categoryIndex]
+    local category = ns.char.categories[categoryIndex]
     if not category then
         return nil
     end
@@ -148,9 +180,10 @@ end
 
 -- Saved data -------------------------------------------------------------------------------
 
-local function Sanitize(db)
+-- A clean copy of a list of categories: only the fields we know, in the types we expect.
+local function CleanCategories(list)
     local categories = {}
-    for _, category in ipairs(db.categories) do
+    for _, category in ipairs(type(list) == "table" and list or {}) do
         if type(category) == "table" then
             local entries = {}
             for _, entry in ipairs(type(category.entries) == "table" and category.entries or {}) do
@@ -165,7 +198,18 @@ local function Sanitize(db)
             }
         end
     end
-    db.categories = categories
+    return categories
+end
+ns.CleanCategories = CleanCategories
+
+local function Migrate(db, steps, target)
+    db.version = db.version or target -- a new table starts at the current shape
+    for version = db.version + 1, target do
+        if steps[version] then
+            steps[version](db)
+        end
+        db.version = version
+    end
 end
 
 local function InitDB()
@@ -173,17 +217,7 @@ local function InitDB()
     if type(db) ~= "table" then
         db = {}
     end
-    if type(db.categories) ~= "table" then
-        db.categories = ns.DefaultCategories()
-    end
-    db.version = db.version or ns.DB_VERSION
-    for version = db.version + 1, ns.DB_VERSION do
-        if STEPS[version] then
-            STEPS[version](db)
-        end
-        db.version = version
-    end
-    Sanitize(db)
+    Migrate(db, STEPS, ns.DB_VERSION)
     db.button = type(db.button) == "table" and db.button or {}
     db.minimap = type(db.minimap) == "table" and db.minimap or {}
     if db.minimap.angle == nil then
@@ -191,6 +225,30 @@ local function InitDB()
     end
     RPQuickResponseDB = db
     ns.db = db
+end
+
+-- This character's categories: its own; on its first login a copy of the 1.0.0 account-wide set
+-- if there is one, otherwise the examples in the player's language.
+local function InitCharDB()
+    local char = RPQuickResponseCharDB
+    if type(char) ~= "table" then
+        char = {}
+    end
+    Migrate(char, CHAR_STEPS, ns.CHAR_DB_VERSION)
+    if type(char.categories) ~= "table" then
+        if type(ns.db.legacyCategories) == "table" then
+            char.categories = CleanCategories(ns.db.legacyCategories)
+        else
+            char.categories = ns.DefaultCategories()
+        end
+    end
+    char.categories = CleanCategories(char.categories)
+    -- A character new since the button moved: start where the account-wide button was.
+    if type(char.button) ~= "table" then
+        char.button = CopyButton(ns.db.button)
+    end
+    RPQuickResponseCharDB = char
+    ns.char = char
 end
 
 -- Start-up, slash commands, the AddOns compartment ------------------------------------------
@@ -210,6 +268,7 @@ events:SetScript("OnEvent", function(self, event, name, blockedCall)
     end
     self:UnregisterEvent("ADDON_LOADED")
     InitDB()
+    InitCharDB()
     ns.CreateMainButton()
     ns.CreateMinimapButton()
 end)

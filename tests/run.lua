@@ -10,9 +10,12 @@ local function check(cond, message)
     end
 end
 
+-- options.account / options.character: saved tables as the game would hand them over.
 local function fresh(locale, options)
     local M = dofile(root .. "/tests/mock.lua")
     M.Install(locale)
+    _G.RPQuickResponseDB = options and options.account
+    _G.RPQuickResponseCharDB = options and options.character
     local ns = M.LoadAddon(root, options)
     return M, ns
 end
@@ -32,7 +35,7 @@ end
 for _, locale in ipairs({ "enUS", "deDE", "frFR" }) do
     test("defaults and translations (" .. locale .. ")", function()
         local _, ns = fresh(locale)
-        for _, category in ipairs(ns.db.categories) do
+        for _, category in ipairs(ns.char.categories) do
             check(not category.name:find("^DEFAULT_"), "name resolves: " .. category.name)
             check(#category.entries == 3, "three lines in " .. category.name)
             for _, entry in ipairs(category.entries) do
@@ -76,9 +79,107 @@ test("random pick never repeats", function()
         check(entry and entry ~= last, "a different line each time")
         last = entry
     end
-    ns.db.categories[2].entries = {}
+    ns.char.categories[2].entries = {}
     local none, message = ns.PickRandom(2)
     check(none == nil and message, "an empty category says so")
+end)
+
+-- Saved data per character ---------------------------------------------------------------------------
+
+-- What 1.0.0 saved: one account-wide set of categories.
+local function oldAccount()
+    return {
+        version = 1,
+        categories = {
+            { name = "Grüße", icon = "Spell_Holy_Renew", entries = { { short = "Hallo", full = "/s Hallo!" } } },
+            { name = "Tanz", entries = { { short = "Tanzen", full = "/dance" } } },
+        },
+        button = { point = "TOP", relativePoint = "TOP", x = 10, y = -20, locked = true },
+        minimap = { angle = 90, hide = true },
+    }
+end
+
+test("a new player: example categories for each character", function()
+    local _, ns = fresh("deDE")
+    check(RPQuickResponseDB.version == 2 and RPQuickResponseDB.categories == nil, "the account holds no categories")
+    check(RPQuickResponseDB.legacyCategories == nil, "and no 1.0.0 set")
+    check(RPQuickResponseCharDB.version == 2 and #RPQuickResponseCharDB.categories == 4, "four examples for this character")
+    check(type(RPQuickResponseCharDB.button) == "table" and RPQuickResponseCharDB.button.point == nil, "the button starts in the middle")
+    check(ns.char.categories[1].name == "Begrüßung", "in the player's language")
+end)
+
+test("1.0.0 data: the first character keeps the lines, the account keeps the rest", function()
+    local account = oldAccount()
+    local _, ns = fresh("deDE", { account = account })
+    check(account.version == 2, "account migrated to version 2")
+    check(account.categories == nil, "categories moved off the account")
+    check(type(account.legacyCategories) == "table" and #account.legacyCategories == 2, "the old set is kept as the starting set")
+    check(#ns.char.categories == 2 and ns.char.categories[1].name == "Grüße", "this character got the old categories")
+    check(ns.char.categories[1].entries[1].full == "/s Hallo!", "with their lines")
+    check(ns.char.categories[1] ~= account.legacyCategories[1], "as a copy, not the same table")
+    check(ns.char.button.point == "TOP" and ns.char.button.x == 10 and ns.char.button.locked == true, "the button stays where it was, locked")
+    check(ns.char.button ~= account.button, "as the character's own copy")
+    check(account.minimap.angle == 90 and account.minimap.hide == true, "minimap settings kept")
+end)
+
+test("1.0.0 data: every character gets its own copy, and they stay apart", function()
+    local account = oldAccount()
+    local _, first = fresh("deDE", { account = account })
+    first.char.categories[1].entries[1].full = "/s Nur für den ersten."
+    table.remove(first.char.categories, 2)
+    local firstChar = RPQuickResponseCharDB
+
+    -- Another character logs in later: same account table, no character table yet.
+    local _, second = fresh("deDE", { account = account })
+    check(#second.char.categories == 2, "the second character starts with the full old set")
+    check(second.char.categories[1].entries[1].full == "/s Hallo!", "untouched by the first character's edits")
+    second.char.categories[1].name = "Anders"
+    check(firstChar.categories[1].name == "Grüße", "the second character's edits do not reach the first")
+
+    first.char.button.x, first.char.button.locked = 300, false
+    check(second.char.button.x == 10 and second.char.button.locked == true, "the second character's button starts where the 1.0.0 button was")
+    second.char.button.y = -400
+    check(firstChar.button.x == 300 and firstChar.button.y == -20, "moving one character's button leaves the other's alone")
+
+    -- The first character logs in again with its own table.
+    local _, again = fresh("deDE", { account = account, character = firstChar })
+    check(#again.char.categories == 1 and again.char.categories[1].entries[1].full == "/s Nur für den ersten.", "the first character keeps its own")
+    check(again.char.button.x == 300 and again.char.button.locked == false, "and its own button")
+end)
+
+test("a character table from before the button moved gets the account's button", function()
+    local _, ns = fresh("enUS", {
+        account = { version = 2, button = { point = "LEFT", relativePoint = "LEFT", x = 5, y = 6, locked = true } },
+        character = { version = 1, categories = { { name = "Mine", entries = {} } } },
+    })
+    check(RPQuickResponseCharDB.version == 2, "character table migrated to version 2")
+    check(ns.char.button.point == "LEFT" and ns.char.button.locked == true, "button copied from the account")
+    check(ns.char.categories[1].name == "Mine", "its categories untouched")
+end)
+
+test("the drag saves to this character; reset clears only this character", function()
+    local _, ns = fresh("enUS", { account = { version = 2, button = { point = "TOP", x = 1, y = 2 } } })
+    local main = RPQuickResponseButton
+    main.points = { { "BOTTOM", UIParent, "BOTTOM", 40, 50 } }
+    main:Fire("OnDragStop")
+    check(ns.char.button.point == "BOTTOM" and ns.char.button.x == 40, "drag saved on the character")
+    check(RPQuickResponseDB.button.point == "TOP", "the account's starting point untouched")
+    ns.ResetButtonPosition()
+    check(ns.char.button.point == nil and RPQuickResponseDB.button.point == "TOP", "reset clears only the character's")
+end)
+
+test("a character's own lines drive the ring", function()
+    local M, ns = fresh("enUS", { account = { version = 2 }, character = { version = 1, categories = {
+        { name = "Only", entries = { { short = "Hi", full = "/s Hi from me" } } },
+    } } })
+    M.Click(RPQuickResponseButton, "LeftButton")
+    local slots = {}
+    for _, child in ipairs(RPQuickResponseRing.children) do
+        if child.template:find("SecureActionButtonTemplate", 1, true) and child.group then slots[#slots + 1] = child end
+    end
+    check(RPQuickResponseRing:GetAttribute("rpqr-count") == 1, "one slot")
+    M.Click(slots[1], "LeftButton")
+    check(M.posted[1] == "/s Hi from me", "posts this character's line")
 end)
 
 -- The ring -------------------------------------------------------------------------------------------
@@ -95,7 +196,7 @@ end
 
 local function macrosOf(ns, index)
     local set = {}
-    for _, entry in ipairs(ns.db.categories[index].entries) do
+    for _, entry in ipairs(ns.char.categories[index].entries) do
         set[ns.MacroText(entry)] = true
     end
     return set
@@ -129,9 +230,9 @@ test("ring: right-click shows the lines, one at a time", function()
     M.Click(slots[3], "RightButton")
     check(not slots[2].group:IsShown() and slots[3].group:IsShown(), "switching closes the other list")
     local pill = slots[3].pills[2]
-    check(pill and pill.text.text == ns.db.categories[3].entries[2].short, "a line shows its Short")
+    check(pill and pill.text.text == ns.char.categories[3].entries[2].short, "a line shows its Short")
     M.Click(pill, "LeftButton")
-    check(M.posted[1] == ns.MacroText(ns.db.categories[3].entries[2]), "the chosen line is posted")
+    check(M.posted[1] == ns.MacroText(ns.char.categories[3].entries[2]), "the chosen line is posted")
     check(not RPQuickResponseRing:IsShown() and not slots[3].group:IsShown(), "ring and list close")
 end)
 
@@ -165,7 +266,7 @@ test("changes during combat wait for its end", function()
     local M, ns = fresh()
     M.FireEvent("PLAYER_REGEN_DISABLED")
     M.inCombat = true
-    ns.db.categories[1].entries = { { short = "Hi", full = "/s Hi" } }
+    ns.char.categories[1].entries = { { short = "Hi", full = "/s Hi" } }
     ns.CloseRing() -- what the settings call after a change; must not touch secure frames now
     RPQuickResponseButton:Fire("OnDragStart") -- moving is refused quietly in combat
     M.inCombat = false
@@ -185,12 +286,12 @@ end)
 
 test("an empty category says so and posts nothing", function()
     local M, ns = fresh()
-    ns.db.categories[2].entries = {}
+    ns.char.categories[2].entries = {}
     ns.CloseRing()
     M.Click(RPQuickResponseButton, "LeftButton")
     M.Click(slotsOf()[2], "LeftButton")
     check(#M.posted == 0, "nothing posted")
-    check(M.printed[#M.printed] and M.printed[#M.printed]:find(ns.db.categories[2].name, 1, true), "a message names the category")
+    check(M.printed[#M.printed] and M.printed[#M.printed]:find(ns.char.categories[2].name, 1, true), "a message names the category")
 end)
 
 -- Settings and icon browser ------------------------------------------------------------------------
@@ -223,7 +324,7 @@ test("settings window opens and the icon browser sets the icon", function()
     browser.search:Fire("OnTextChanged")
     check(browser.count.text == "1 Symbole", "search finds one: " .. tostring(browser.count.text))
     M.Click(browser.cells[1], "LeftButton")
-    check(ns.db.categories[1].icon == "Ability_Warrior_BattleShout", "icon applied: " .. tostring(ns.db.categories[1].icon))
+    check(ns.char.categories[1].icon == "Ability_Warrior_BattleShout", "icon applied: " .. tostring(ns.char.categories[1].icon))
     check(not browser:IsShown(), "browser closes")
 end)
 

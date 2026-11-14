@@ -37,8 +37,8 @@ Example:
 /s Welcome. May your road be a safe one.
 ```
 
-The ring holds up to 12 categories. New players get Greeting, Farewell, Surprise and Cursing,
-written in their game language.
+Every character has its own categories and lines. The ring holds up to 12 categories.
+A new character gets Greeting, Farewell, Surprise and Cursing, written in the game language.
 
 ## Icons
 
@@ -62,8 +62,15 @@ To add a language, copy `enUS.lua` to `Locales/<locale>.lua` (for example `frFR.
 
 ## Saved data
 
-`RPQuickResponseDB` (shared by the whole account). It has a `version` field: a change to its shape
-bumps `ns.DB_VERSION` in `Core.lua` and adds a migration step to `STEPS`.
+- `RPQuickResponseDB` (account): the minimap button.
+- `RPQuickResponseCharDB` (per character): that character's categories and lines, and its button's
+  position and lock.
+
+Both have a `version` field: a change to a table's shape bumps `ns.DB_VERSION` or
+`ns.CHAR_DB_VERSION` in `Core.lua` and adds a migration step to `STEPS` or `CHAR_STEPS`.
+1.0.0 kept the categories and the button on the account; since 1.1.0 they are kept there as the
+starting point (`legacyCategories`, `button`) and every character copies them on its first login,
+so no lines are lost and the button stays where it was.
 
 ## Tests
 

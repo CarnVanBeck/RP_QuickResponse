@@ -96,7 +96,7 @@ end
 -- Pills: one line of a category, shown by its Short ------------------------------------------------
 
 local function EntryOf(pill)
-    local category = ns.db.categories[pill.category]
+    local category = ns.char.categories[pill.category]
     return category and category.entries[pill.entry]
 end
 
@@ -179,7 +179,7 @@ end
 
 local function SlotOnEnter(self)
     self.label:SetTextColor(unpack(ns.COLOR.labelHot))
-    local category = ns.db.categories[self.index]
+    local category = ns.char.categories[self.index]
     if self.group:IsShown() or not category then
         return
     end
@@ -291,7 +291,7 @@ local function Layout()
         return
     end
     dirty = false
-    local categories = ns.db.categories
+    local categories = ns.char.categories
     local count = #categories
     local radius = math.max(MIN_RADIUS, count * SLOT_SPACING / (2 * math.pi))
     local diameter = 2 * radius + SLOT_SIZE + 50
@@ -479,13 +479,13 @@ function ns.RestoreButtonPosition()
     if InCombatLockdown() then
         return
     end
-    local saved = ns.db.button
+    local saved = ns.char.button
     main:ClearAllPoints()
     main:SetPoint(saved.point or "CENTER", UIParent, saved.relativePoint or "CENTER", saved.x or 0, saved.y or -150)
 end
 
 function ns.ResetButtonPosition()
-    local saved = ns.db.button
+    local saved = ns.char.button
     saved.point, saved.relativePoint, saved.x, saved.y = nil, nil, nil, nil
     ns.CloseRing()
     ns.RestoreButtonPosition()
@@ -499,7 +499,7 @@ local function MainOnEnter(self)
     GameTooltip:SetText("RP - Quick Response", unpack(ns.COLOR.labelHot))
     GameTooltip:AddLine(L.TOOLTIP_MAIN_LEFT, 1, 1, 1)
     GameTooltip:AddLine(L.TOOLTIP_MAIN_RIGHT, 1, 1, 1)
-    if ns.db.button.locked then
+    if ns.char.button.locked then
         GameTooltip:AddLine(L.TOOLTIP_MAIN_LOCKED, 0.6, 0.6, 0.6)
     else
         GameTooltip:AddLine(L.TOOLTIP_MAIN_DRAG, 1, 1, 1)
@@ -516,7 +516,7 @@ local function MainOnClick(self, mouseButton)
     if mouseButton == "RightButton" then
         ns.CloseRing()
         ns.ToggleConfig()
-    elseif #ns.db.categories == 0 then
+    elseif #ns.char.categories == 0 then
         ns.Print(L.MSG_NO_CATEGORIES)
         ns.OpenConfig()
     end
@@ -538,7 +538,7 @@ function ns.CreateMainButton()
 
     -- The button is secure, so it only moves out of combat.
     main:SetScript("OnDragStart", function(self)
-        if ns.db.button.locked or InCombatLockdown() then
+        if ns.char.button.locked or InCombatLockdown() then
             return
         end
         ring:Hide()
@@ -549,7 +549,7 @@ function ns.CreateMainButton()
         self:StopMovingOrSizing()
         self:SetUserPlaced(false) -- our own saved position, not the client's layout cache
         local point, _, relativePoint, x, y = self:GetPoint()
-        local saved = ns.db.button
+        local saved = ns.char.button
         saved.point, saved.relativePoint, saved.x, saved.y = point, relativePoint, x, y
         self.movedAt = GetTime()
     end)

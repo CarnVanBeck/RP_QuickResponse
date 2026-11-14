@@ -19,7 +19,7 @@ local selectedCategory, selectedEntry
 local dirty = false
 local loading = false
 
-local function Categories() return ns.db.categories end
+local function Categories() return ns.char.categories end
 local function CurrentCategory() return selectedCategory and Categories()[selectedCategory] end
 local function CurrentEntry()
     local category = CurrentCategory()
@@ -559,7 +559,7 @@ local function CreateConfig()
     CreateTestButton()
 
     -- Button options
-    lockCheck = Check(frame, L.CHECK_LOCK, function(checked) ns.db.button.locked = checked end)
+    lockCheck = Check(frame, L.CHECK_LOCK, function(checked) ns.char.button.locked = checked end)
     lockCheck:SetPoint("BOTTOMLEFT", 14, 10)
     minimapCheck = Check(frame, L.CHECK_MINIMAP, function(checked)
         ns.db.minimap.hide = not checked
@@ -573,7 +573,7 @@ local function CreateConfig()
     reset:SetPoint("BOTTOMRIGHT", -14, 12)
 
     frame:SetScript("OnShow", function()
-        lockCheck:SetChecked(ns.db.button.locked and true or false)
+        lockCheck:SetChecked(ns.char.button.locked and true or false)
         minimapCheck:SetChecked(not ns.db.minimap.hide)
         RefreshLists()
         LoadCategory()

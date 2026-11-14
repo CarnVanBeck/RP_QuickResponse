@@ -213,6 +213,7 @@ function M.Install(locale)
     _G.SlashCmdList = {}
     _G.YES, _G.NO = "Yes", "No"
     _G.RPQuickResponseDB = nil
+    _G.RPQuickResponseCharDB = nil
     _G.SecureHandlerSetFrameRef = function(frame, label, ref) frame.attributes["frameref-" .. label] = ref end
     _G.SecureHandlerWrapScript = function(frame, _, header, pre, post)
         assert(not M.inCombat, "WrapScript in combat")

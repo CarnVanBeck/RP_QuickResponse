@@ -3,8 +3,9 @@
 ## Notes: A round button that opens your role-play lines in a ring around it.
 ## Notes-deDE: Ein runder Knopf, der deine Rollenspiel-Sätze im Kreis um sich öffnet.
 ## Author: CarnVanBeck
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: RPQuickResponseDB
+## SavedVariablesPerCharacter: RPQuickResponseCharDB
 ## IconTexture: Interface\Icons\Spell_Holy_Renew
 ## AddonCompartmentFunc: RPQuickResponse_OnAddonCompartmentClick
 ## X-Category: Roleplay

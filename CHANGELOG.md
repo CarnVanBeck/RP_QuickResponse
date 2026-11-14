@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- Every character now has its own categories and lines. Lines saved with 1.0.0 are not lost:
+  each character starts with a copy of them on its first login, then changes them on its own.
+- Every character now has its own button position and lock. Each character starts where the
+  button was before; moving it on one character no longer moves it on the others.
+  The minimap button stays the same for the whole account.
+
 ## 1.0.0
 
 - A round, draggable button that opens your categories in a ring around it.
