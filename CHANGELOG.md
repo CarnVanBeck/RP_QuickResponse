@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- Profiles ([#1](https://github.com/CarnVanBeck/RP_QuickResponse/issues/1)): share lines between characters.
+  Create an account-wide profile in the settings, named after your character by default; it starts as a
+  copy of your current lines. Every character can switch to any profile or keep its own lines.
+  Each character keeps its own lines while it uses a profile, and its own button position.
+
 ## 1.1.0
 
 - Every character now has its own categories and lines. Lines saved with 1.0.0 are not lost:

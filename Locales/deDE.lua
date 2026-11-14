@@ -56,6 +56,20 @@ ns.RegisterLocale("deDE", {
     NEW_ENTRY = "Neuer Satz",
     CONFIRM_DELETE_CATEGORY = "Die Kategorie „%s“ mit allen Sätzen löschen?",
 
+    -- Profile
+    CONFIG_PROFILE = "Profil",
+    TOOLTIP_PROFILE = "Die eigenen Sätze dieses Charakters verwenden oder ein Profil, das du mit deinen anderen Charakteren teilst. Änderungen gehen an das, was gerade verwendet wird.",
+    PROFILE_OWN = "Eigene Sätze (%s)",
+    PROFILE_DEFAULT_NAME = "Profil",
+    BTN_NEW_PROFILE = "Neues Profil",
+    BTN_DELETE_PROFILE = "Profil löschen",
+    CONFIRM_NEW_PROFILE = "Name des neuen Profils. Es beginnt mit einer Kopie der Sätze, die gerade verwendet werden.",
+    CONFIRM_DELETE_PROFILE = "Das Profil „%s“ löschen? Charaktere, die es verwenden, kehren zu ihren eigenen Sätzen zurück.",
+    MSG_PROFILE_CREATED = "Profil „%s“ angelegt; dieser Charakter verwendet es jetzt.",
+    ERR_PROFILE_NO_NAME = "Ein Profil braucht einen Namen.",
+    ERR_PROFILE_TOO_LONG = "Ein Profilname hat höchstens %d Zeichen.",
+    ERR_PROFILE_EXISTS = "Ein Profil namens „%s“ gibt es schon.",
+
     -- Symbolsuche
     ICON_BROWSER_TITLE = "Symbol wählen",
     ICON_SEARCH = "Name oder Datei-ID",

@@ -96,7 +96,7 @@ end
 -- Pills: one line of a category, shown by its Short ------------------------------------------------
 
 local function EntryOf(pill)
-    local category = ns.char.categories[pill.category]
+    local category = ns.Categories()[pill.category]
     return category and category.entries[pill.entry]
 end
 
@@ -179,7 +179,7 @@ end
 
 local function SlotOnEnter(self)
     self.label:SetTextColor(unpack(ns.COLOR.labelHot))
-    local category = ns.char.categories[self.index]
+    local category = ns.Categories()[self.index]
     if self.group:IsShown() or not category then
         return
     end
@@ -291,7 +291,7 @@ local function Layout()
         return
     end
     dirty = false
-    local categories = ns.char.categories
+    local categories = ns.Categories()
     local count = #categories
     local radius = math.max(MIN_RADIUS, count * SLOT_SPACING / (2 * math.pi))
     local diameter = 2 * radius + SLOT_SIZE + 50
@@ -516,7 +516,7 @@ local function MainOnClick(self, mouseButton)
     if mouseButton == "RightButton" then
         ns.CloseRing()
         ns.ToggleConfig()
-    elseif #ns.char.categories == 0 then
+    elseif #ns.Categories() == 0 then
         ns.Print(L.MSG_NO_CATEGORIES)
         ns.OpenConfig()
     end
