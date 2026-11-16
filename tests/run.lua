@@ -14,6 +14,7 @@ end
 local function fresh(locale, options)
     local M = dofile(root .. "/tests/mock.lua")
     M.Install(locale)
+    M.playerName = options and options.player
     _G.RPQuickResponseDB = options and options.account
     _G.RPQuickResponseCharDB = options and options.character
     local ns = M.LoadAddon(root, options)
@@ -326,6 +327,91 @@ test("settings window opens and the icon browser sets the icon", function()
     M.Click(browser.cells[1], "LeftButton")
     check(ns.char.categories[1].icon == "Ability_Warrior_BattleShout", "icon applied: " .. tostring(ns.char.categories[1].icon))
     check(not browser:IsShown(), "browser closes")
+end)
+
+-- Profiles -----------------------------------------------------------------------------------------
+
+test("profiles: create, switch, edit, share between characters", function()
+    local M, ns = fresh("enUS", { player = "Aldric" })
+    check(ns.ActiveProfile() == nil and ns.Categories() == ns.char.categories, "starts on its own lines")
+    check(ns.DefaultProfileName() == "Aldric", "default name is the character's")
+    local name = ns.CreateProfile(ns.DefaultProfileName())
+    check(name == "Aldric" and ns.ActiveProfile() == "Aldric", "created and in use")
+    check(ns.Categories() ~= ns.char.categories and #ns.Categories() == #ns.char.categories, "a copy of the lines")
+    check(ns.DefaultProfileName() == "Aldric 2", "next default gets a number: " .. ns.DefaultProfileName())
+    local _, err = ns.CreateProfile("Aldric")
+    check(err == 'A profile named "Aldric" already exists.', "no duplicates: " .. tostring(err))
+    check(select(2, ns.CreateProfile("   ")) ~= nil, "no empty name")
+    check(select(2, ns.CreateProfile(string.rep("x", 41))) ~= nil, "no overlong name")
+
+    ns.Categories()[1].name = "Shared"
+    check(ns.char.categories[1].name ~= "Shared", "edits go to the profile, not the own lines")
+    check(ns.PickRandom(1) ~= nil, "the ring picks from the profile")
+
+    -- Another character on the same account.
+    local account, own = RPQuickResponseDB, RPQuickResponseCharDB
+    local _, ns2 = fresh("enUS", { player = "Brenna", account = account })
+    check(ns2.ActiveProfile() == nil, "another character keeps its own lines")
+    check(ns2.ProfileNames()[1] == "Aldric", "and sees the profile")
+    check(ns2.UseProfile("Aldric") and ns2.Categories()[1].name == "Shared", "it can switch to it")
+    check(not ns2.UseProfile("Nobody"), "not to a profile that does not exist")
+    check(ns2.UseProfile(nil) and ns2.Categories() == ns2.char.categories, "and back to its own")
+
+    -- Brenna deletes the profile; Aldric is back on his own lines at the next login.
+    check(ns2.DeleteProfile("Aldric") and #ns2.ProfileNames() == 0, "deleted")
+    local _, ns3 = fresh("enUS", { player = "Aldric", account = account, character = own })
+    check(ns3.ActiveProfile() == nil and ns3.char.categories[1].name ~= "Shared", "a deleted profile falls back to own lines")
+end)
+
+test("profiles: old saved tables load", function()
+    local _, ns = fresh("enUS", { account = { version = 2, minimap = {}, button = {} },
+        character = { version = 2, categories = { { name = "Mine", entries = {} } }, button = {} } })
+    check(type(ns.db.profiles) == "table" and next(ns.db.profiles) == nil, "no profiles yet")
+    check(ns.Categories()[1].name == "Mine", "own lines kept")
+    local _, ns2 = fresh("enUS", { account = { version = 2, profiles = { Bad = "x", Good = { categories = { { name = "G" } } } } },
+        character = { version = 2, profile = "Bad" } })
+    check(ns2.db.profiles.Bad == nil and ns2.db.profiles.Good.categories[1].name == "G", "profiles cleaned")
+    check(ns2.ActiveProfile() == nil, "a broken profile reference is dropped")
+end)
+
+test("profiles in the settings window", function()
+    local M, ns = fresh("enUS", { player = "Aldric" })
+    ns.OpenConfig()
+    local dialog = StaticPopupDialogs.RPQR_NEW_PROFILE
+    local box = setmetatable({}, { __index = function() return function() end end })
+    box.GetText = function() return box.text end
+    box.SetText = function(_, text) box.text = text end
+    local popup = { EditBox = box }
+    dialog.OnShow(popup)
+    check(box.text == "Aldric", "the name box starts with the character's name")
+    dialog.OnAccept(popup)
+    check(ns.ActiveProfile() == "Aldric", "accepting creates the profile and switches")
+
+    -- Find the profile button by its text, open the menu, pick the own lines.
+    local profileButton
+    local function walk(frame)
+        if frame.kind == "Button" and frame.text == "Aldric" and frame.parent == RPQuickResponseConfig then
+            profileButton = frame
+        end
+        for _, child in ipairs(frame.children) do walk(child) end
+    end
+    walk(RPQuickResponseConfig)
+    check(profileButton ~= nil, "the profile button shows the profile")
+    M.Click(profileButton, "LeftButton")
+    local rows = {}
+    local function rowsOf(frame)
+        if frame.kind == "Button" and frame.text and frame.text.text and frame:IsVisible() and frame.check then
+            rows[#rows + 1] = frame
+        end
+        for _, child in ipairs(frame.children) do rowsOf(child) end
+    end
+    rowsOf(RPQuickResponseConfig)
+    check(#rows == 2 and rows[1].text.text == "Own lines (Aldric)" and rows[2].text.text == "Aldric", "menu lists own lines and the profile")
+    M.Click(rows[1], "LeftButton")
+    check(ns.ActiveProfile() == nil and profileButton.text == "Own lines (Aldric)", "switched back to own lines")
+
+    StaticPopupDialogs.RPQR_DELETE_PROFILE.OnAccept(nil, "Aldric")
+    check(#ns.ProfileNames() == 0, "deleted from the window")
 end)
 
 print(string.format("\n%d checks, %d failed", total, failures))

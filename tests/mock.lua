@@ -8,6 +8,7 @@ M.useKeyDown = false
 M.posted = {}  -- macro texts the secure template ran
 M.printed = {} -- addon chat output
 M.bindings = {}
+M.playerName = nil -- the logged-in character's name (UnitName("player")), "Aldric" if unset
 
 local Frame = {}
 Frame.__index = function(self, key)
@@ -211,7 +212,8 @@ function M.Install(locale)
     _G.StaticPopupDialogs = {}
     _G.StaticPopup_Show = function() end
     _G.SlashCmdList = {}
-    _G.YES, _G.NO = "Yes", "No"
+    _G.YES, _G.NO, _G.ACCEPT, _G.CANCEL = "Yes", "No", "Accept", "Cancel"
+    _G.UnitName = function() return M.playerName or "Aldric" end
     _G.RPQuickResponseDB = nil
     _G.RPQuickResponseCharDB = nil
     _G.SecureHandlerSetFrameRef = function(frame, label, ref) frame.attributes["frameref-" .. label] = ref end

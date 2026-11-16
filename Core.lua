@@ -5,10 +5,11 @@ local L = ns.L
 ns.MAX_CATEGORIES = 12
 
 -- Two saved tables:
---   RPQuickResponseDB      (account) the minimap button; the 1.0.0 button and categories as
---                          the starting point for characters that have not logged in since;
---   RPQuickResponseCharDB  (character) that character's categories and lines, its button's
---                          position and lock.
+--   RPQuickResponseDB      (account) the minimap button; the profiles (named sets of
+--                          categories any character can use); the 1.0.0 button and categories
+--                          as the starting point for characters that have not logged in since;
+--   RPQuickResponseCharDB  (character) that character's own categories and lines, the profile
+--                          it uses instead (if any), its button's position and lock.
 -- Migrations: STEPS[n] turns a version n-1 table into version n.
 -- Players' saved data must survive every update: never drop or reinterpret a field
 -- without bumping the version and adding a step here.
@@ -160,7 +161,7 @@ local lastPick = setmetatable({}, { __mode = "k" })
 
 -- Returns the entry, or nil and the message to show.
 function ns.PickRandom(categoryIndex)
-    local category = ns.char.categories[categoryIndex]
+    local category = ns.Categories()[categoryIndex]
     if not category then
         return nil
     end
@@ -220,6 +221,14 @@ local function InitDB()
     Migrate(db, STEPS, ns.DB_VERSION)
     db.button = type(db.button) == "table" and db.button or {}
     db.minimap = type(db.minimap) == "table" and db.minimap or {}
+    -- Profiles came in 1.2.0 as a new field: older tables simply have none yet.
+    local profiles = {}
+    for name, profile in pairs(type(db.profiles) == "table" and db.profiles or {}) do
+        if type(name) == "string" and type(profile) == "table" then
+            profiles[name] = { categories = CleanCategories(profile.categories) }
+        end
+    end
+    db.profiles = profiles
     if db.minimap.angle == nil then
         db.minimap.angle = 225
     end
@@ -247,8 +256,92 @@ local function InitCharDB()
     if type(char.button) ~= "table" then
         char.button = CopyButton(ns.db.button)
     end
+    -- A profile deleted on another character: back to this character's own lines.
+    if type(char.profile) ~= "string" or not ns.db.profiles[char.profile] then
+        char.profile = nil
+    end
     RPQuickResponseCharDB = char
     ns.char = char
+end
+
+-- Profiles ---------------------------------------------------------------------------------
+-- A profile is an account-wide set of categories. A character uses either its own categories
+-- (char.categories, always kept) or one profile (char.profile names it); edits go to whichever
+-- is in use, so every character on that profile sees them.
+
+local PROFILE_NAME_MAX = 40
+
+-- The categories in use: the profile's, or the character's own.
+function ns.Categories()
+    local profile = ns.char.profile and ns.db.profiles[ns.char.profile]
+    return profile and profile.categories or ns.char.categories
+end
+
+-- The name of the profile in use, or nil for the character's own lines.
+function ns.ActiveProfile()
+    return ns.char.profile
+end
+
+function ns.ProfileNames()
+    local names = {}
+    for name in pairs(ns.db.profiles) do
+        names[#names + 1] = name
+    end
+    table.sort(names, function(a, b) return a:lower() < b:lower() end)
+    return names
+end
+
+-- The character's name, or "Name 2", "Name 3", ... when that profile already exists.
+function ns.DefaultProfileName()
+    local base = UnitName and UnitName("player") or nil
+    if not base or base == "" then
+        base = L.PROFILE_DEFAULT_NAME
+    end
+    local name, n = base, 1
+    while ns.db.profiles[name] do
+        n = n + 1
+        name = base .. " " .. n
+    end
+    return name
+end
+
+-- nil: the character's own lines.
+function ns.UseProfile(name)
+    if name ~= nil and not ns.db.profiles[name] then
+        return false
+    end
+    ns.char.profile = name
+    return true
+end
+
+-- A new profile starts as a copy of the lines in use, and the character switches to it.
+-- Returns the name, or nil and why not.
+function ns.CreateProfile(name)
+    name = Trim(tostring(name or ""))
+    if name == "" then
+        return nil, L.ERR_PROFILE_NO_NAME
+    end
+    if #name > PROFILE_NAME_MAX then
+        return nil, L.ERR_PROFILE_TOO_LONG:format(PROFILE_NAME_MAX)
+    end
+    if ns.db.profiles[name] then
+        return nil, L.ERR_PROFILE_EXISTS:format(name)
+    end
+    ns.db.profiles[name] = { categories = CleanCategories(ns.Categories()) }
+    ns.char.profile = name
+    return name
+end
+
+-- Characters on a deleted profile go back to their own lines (this one now, others at login).
+function ns.DeleteProfile(name)
+    if not ns.db.profiles[name] then
+        return false
+    end
+    ns.db.profiles[name] = nil
+    if ns.char.profile == name then
+        ns.char.profile = nil
+    end
+    return true
 end
 
 -- Start-up, slash commands, the AddOns compartment ------------------------------------------

@@ -1,9 +1,10 @@
--- The settings window: categories on the left, the chosen category's lines in the middle,
+-- The settings window: the profile in use along the top, categories on the left, the chosen category's lines in the middle,
 -- the chosen line's Short and Full on the right, button options along the bottom.
 local _, ns = ...
 local L = ns.L
 
-local WIDTH, HEIGHT = 760, 500
+local WIDTH, HEIGHT = 760, 532
+local TOP = 32 -- room for the profile row
 local ROW_HEIGHT = 22
 local SHORT_MAX = 40
 local FULL_MAX = 2000
@@ -14,12 +15,13 @@ local categoryPanel, entryPanel, noEntryText
 local nameBox, iconPreview
 local shortBox, fullBox, statusText
 local lockCheck, minimapCheck
+local profileButton, profileMenu, deleteProfileButton
 
 local selectedCategory, selectedEntry
 local dirty = false
 local loading = false
 
-local function Categories() return ns.char.categories end
+local function Categories() return ns.Categories() end
 local function CurrentCategory() return selectedCategory and Categories()[selectedCategory] end
 local function CurrentEntry()
     local category = CurrentCategory()
@@ -387,6 +389,165 @@ local function DeleteEntry()
     LoadEntry()
 end
 
+-- Profiles ---------------------------------------------------------------------------------------
+
+local function OwnLabel()
+    return L.PROFILE_OWN:format(UnitName and UnitName("player") or "")
+end
+
+local function RefreshProfile()
+    local active = ns.ActiveProfile()
+    profileButton:SetText(active or OwnLabel())
+    deleteProfileButton:SetEnabled(active ~= nil)
+end
+
+-- Shows another set of lines: the editor starts over on its first category.
+local function ProfileChanged()
+    ns.CloseIconBrowser()
+    selectedCategory, selectedEntry = nil, nil
+    dirty = false
+    ns.CloseRing()
+    RefreshProfile()
+    RefreshLists()
+    LoadCategory()
+    LoadEntry()
+end
+
+local function SwitchProfile(name)
+    profileMenu:Hide()
+    if name == ns.ActiveProfile() or not CommitEntry() then
+        return
+    end
+    ns.UseProfile(name)
+    ProfileChanged()
+end
+
+-- A small drop-down: the character's own lines, then every profile on the account.
+local MENU_ROW = 20
+local function CreateProfileMenu()
+    profileMenu = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    profileMenu:SetBackdrop(INSET_BACKDROP)
+    profileMenu:SetBackdropColor(0.05, 0.04, 0.03, 0.97)
+    profileMenu:SetBackdropBorderColor(unpack(ns.COLOR.rim))
+    profileMenu:SetFrameLevel(frame:GetFrameLevel() + 60)
+    profileMenu:SetPoint("TOPLEFT", profileButton, "BOTTOMLEFT", 0, -2)
+    profileMenu:EnableMouse(true)
+    profileMenu:Hide()
+    profileMenu.rows = {}
+end
+
+local function ShowProfileMenu()
+    if profileMenu:IsShown() then
+        profileMenu:Hide()
+        return
+    end
+    local items = { { label = OwnLabel() } }
+    for _, name in ipairs(ns.ProfileNames()) do
+        items[#items + 1] = { name = name, label = name }
+    end
+    local active = ns.ActiveProfile()
+    local width = profileButton:GetWidth()
+    for i, item in ipairs(items) do
+        local row = profileMenu.rows[i]
+        if not row then
+            row = CreateFrame("Button", nil, profileMenu)
+            row:SetHeight(MENU_ROW)
+            row:SetPoint("TOPLEFT", 5, -5 - (i - 1) * MENU_ROW)
+            row:SetPoint("TOPRIGHT", -5, -5 - (i - 1) * MENU_ROW)
+            row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+            row.check = row:CreateTexture(nil, "OVERLAY")
+            row.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+            row.check:SetSize(16, 16)
+            row.check:SetPoint("LEFT", 2, 0)
+            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            row.text:SetPoint("LEFT", 20, 0)
+            row.text:SetPoint("RIGHT", -4, 0)
+            row.text:SetJustifyH("LEFT")
+            row.text:SetWordWrap(false)
+            row:SetScript("OnClick", function(r) SwitchProfile(r.profile) end)
+            profileMenu.rows[i] = row
+        end
+        row.profile = item.name
+        row.text:SetText(item.label)
+        row.check:SetShown(item.name == active)
+        row:Show()
+    end
+    for i = #items + 1, #profileMenu.rows do
+        profileMenu.rows[i]:Hide()
+    end
+    profileMenu:SetSize(width, #items * MENU_ROW + 10)
+    profileMenu:Show()
+end
+
+local function ProfileEditBox(popup)
+    return popup.EditBox or popup.editBox
+end
+
+local function AcceptNewProfile(popup)
+    local name, err = ns.CreateProfile(ProfileEditBox(popup):GetText())
+    if not name then
+        ns.Print(err)
+        return
+    end
+    ns.Print(L.MSG_PROFILE_CREATED:format(name))
+    ProfileChanged()
+end
+
+StaticPopupDialogs["RPQR_NEW_PROFILE"] = {
+    text = "%s",
+    button1 = ACCEPT or OKAY,
+    button2 = CANCEL,
+    hasEditBox = true,
+    maxLetters = 40,
+    OnShow = function(self)
+        local box = ProfileEditBox(self)
+        box:SetText(ns.DefaultProfileName())
+        box:HighlightText()
+        box:SetFocus()
+    end,
+    OnAccept = function(self) AcceptNewProfile(self) end,
+    EditBoxOnEnterPressed = function(self)
+        local popup = self:GetParent()
+        AcceptNewProfile(popup)
+        popup:Hide()
+    end,
+    EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+local function AskNewProfile()
+    profileMenu:Hide()
+    if CommitEntry() then
+        StaticPopup_Show("RPQR_NEW_PROFILE", L.CONFIRM_NEW_PROFILE)
+    end
+end
+
+StaticPopupDialogs["RPQR_DELETE_PROFILE"] = {
+    text = "%s",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function(_, name)
+        if ns.DeleteProfile(name) then
+            ProfileChanged()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+local function AskDeleteProfile()
+    profileMenu:Hide()
+    local name = ns.ActiveProfile()
+    if name then
+        StaticPopup_Show("RPQR_DELETE_PROFILE", L.CONFIRM_DELETE_PROFILE:format(name), nil, name)
+    end
+end
+
 -- "Post now" is a secure macro button like the ring's. It hangs off UIParent rather than the
 -- window, so the window itself stays free to open, close and move during combat; the button
 -- is put away as combat starts and comes back after.
@@ -466,10 +627,27 @@ local function CreateConfig()
     title:SetPoint("TOP", 0, -5)
     title:SetText(L.CONFIG_TITLE)
 
+    -- The profile in use
+    Label(frame, L.CONFIG_PROFILE):SetPoint("TOPLEFT", 18, -34)
+    profileButton = Button(frame, "", 240, ShowProfileMenu)
+    profileButton:SetPoint("TOPLEFT", 90, -30)
+    profileButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L.CONFIG_PROFILE, 1, 1, 1)
+        GameTooltip:AddLine(L.TOOLTIP_PROFILE, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    profileButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    local newProfile = Button(frame, L.BTN_NEW_PROFILE, 120, AskNewProfile)
+    newProfile:SetPoint("LEFT", profileButton, "RIGHT", 6, 0)
+    deleteProfileButton = Button(frame, L.BTN_DELETE_PROFILE, 120, AskDeleteProfile)
+    deleteProfileButton:SetPoint("LEFT", newProfile, "RIGHT", 4, 0)
+    CreateProfileMenu()
+
     -- Categories
-    Label(frame, L.CONFIG_CATEGORIES):SetPoint("TOPLEFT", 18, -34)
+    Label(frame, L.CONFIG_CATEGORIES):SetPoint("TOPLEFT", 18, -34 - TOP)
     categoryList = List(frame, 200, 340, SelectCategory)
-    categoryList:SetPoint("TOPLEFT", 14, -52)
+    categoryList:SetPoint("TOPLEFT", 14, -52 - TOP)
     local newCategory = Button(frame, L.BTN_NEW, 98, NewCategory)
     newCategory:SetPoint("TOPLEFT", categoryList, "BOTTOMLEFT", 0, -6)
     local deleteCategory = Button(frame, L.BTN_DELETE, 98, AskDeleteCategory)
@@ -481,7 +659,7 @@ local function CreateConfig()
 
     -- The chosen category
     categoryPanel = CreateFrame("Frame", nil, frame)
-    categoryPanel:SetPoint("TOPLEFT", 228, -28)
+    categoryPanel:SetPoint("TOPLEFT", 228, -28 - TOP)
     categoryPanel:SetPoint("BOTTOMRIGHT", -10, 40)
 
     Label(categoryPanel, L.CONFIG_NAME):SetPoint("TOPLEFT", 4, -6)
@@ -575,11 +753,13 @@ local function CreateConfig()
     frame:SetScript("OnShow", function()
         lockCheck:SetChecked(ns.char.button.locked and true or false)
         minimapCheck:SetChecked(not ns.db.minimap.hide)
+        RefreshProfile()
         RefreshLists()
         LoadCategory()
         LoadEntry()
     end)
     frame:SetScript("OnHide", function()
+        profileMenu:Hide()
         if not CommitEntry() then
             ns.Print(L.MSG_DISCARDED)
             dirty = false

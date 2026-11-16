@@ -40,6 +40,18 @@ Example:
 Every character has its own categories and lines. The ring holds up to 12 categories.
 A new character gets Greeting, Farewell, Surprise and Cursing, written in the game language.
 
+## Profiles
+
+To share lines between characters, use a profile. The settings window shows the one in use at the top:
+
+- **New profile** creates an account-wide profile, named after the character by default. It starts
+  as a copy of the lines in use, and the character switches to it.
+- The profile button switches this character between its own lines and any profile on the account.
+  A character's own lines are kept while it uses a profile.
+- Changes go to whatever is in use, so every character on a profile sees them.
+- **Delete profile** removes it. Characters that used it go back to their own lines.
+- Each character keeps its own button position and lock.
+
 ## Icons
 
 The settings window has an icon browser (click the category's icon): a grid of every icon
@@ -62,9 +74,9 @@ To add a language, copy `enUS.lua` to `Locales/<locale>.lua` (for example `frFR.
 
 ## Saved data
 
-- `RPQuickResponseDB` (account): the minimap button.
-- `RPQuickResponseCharDB` (per character): that character's categories and lines, and its button's
-  position and lock.
+- `RPQuickResponseDB` (account): the minimap button and the profiles (`profiles[name].categories`).
+- `RPQuickResponseCharDB` (per character): that character's own categories and lines, the profile
+  it uses (`profile`, unset for its own lines), and its button's position and lock.
 
 Both have a `version` field: a change to a table's shape bumps `ns.DB_VERSION` or
 `ns.CHAR_DB_VERSION` in `Core.lua` and adds a migration step to `STEPS` or `CHAR_STEPS`.

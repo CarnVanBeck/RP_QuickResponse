@@ -56,6 +56,20 @@ ns.RegisterLocale("enUS", {
     NEW_ENTRY = "New line",
     CONFIRM_DELETE_CATEGORY = "Delete the category \"%s\" and all of its lines?",
 
+    -- Profiles
+    CONFIG_PROFILE = "Profile",
+    TOOLTIP_PROFILE = "Use this character's own lines, or a profile shared with your other characters. Changes go to whatever is in use.",
+    PROFILE_OWN = "Own lines (%s)",
+    PROFILE_DEFAULT_NAME = "Profile",
+    BTN_NEW_PROFILE = "New profile",
+    BTN_DELETE_PROFILE = "Delete profile",
+    CONFIRM_NEW_PROFILE = "Name of the new profile. It starts with a copy of the lines in use now.",
+    CONFIRM_DELETE_PROFILE = "Delete the profile \"%s\"? Characters using it go back to their own lines.",
+    MSG_PROFILE_CREATED = "Profile \"%s\" created; this character uses it now.",
+    ERR_PROFILE_NO_NAME = "A profile needs a name.",
+    ERR_PROFILE_TOO_LONG = "A profile name holds at most %d characters.",
+    ERR_PROFILE_EXISTS = "A profile named \"%s\" already exists.",
+
     -- Icon browser
     ICON_BROWSER_TITLE = "Choose an icon",
     ICON_SEARCH = "Name or file ID",
